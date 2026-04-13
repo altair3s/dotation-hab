@@ -1,70 +1,134 @@
-# Getting Started with Create React App
+# DotaGroupe — Gestion des dotations d'habillement
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Application web de gestion des dotations vestimentaires et accessoires pour groupes multi-filiales.
 
-## Available Scripts
+## Stack technique
 
-In the project directory, you can run:
+| Couche      | Technologie                          |
+|-------------|--------------------------------------|
+| Frontend    | React 18 + Vite + TypeScript         |
+| Styles      | Tailwind CSS                         |
+| State       | Zustand + React Query                |
+| Backend/BDD | Supabase (PostgreSQL + Auth + Storage)|
+| Hébergement | OVH (build statique)                 |
 
-### `npm start`
+## Démarrage rapide
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### 1. Cloner et installer
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```bash
+git clone <url-du-repo>
+cd dotation-groupe
+npm install
+```
 
-### `npm test`
+### 2. Configurer Supabase
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. Créer un projet sur [supabase.com](https://supabase.com)
+2. Dans **SQL Editor**, exécuter `supabase/migrations/001_initial_schema.sql`
+3. Dans **Authentication > Settings**, configurer :
+   - Site URL : `http://localhost:5173` (dev) ou votre URL OVH (prod)
+   - Email templates : personnaliser au nom du groupe
 
-### `npm run build`
+### 3. Variables d'environnement
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+cp .env.example .env
+# Renseigner VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY
+# (disponibles dans Supabase > Project Settings > API)
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 4. Lancer le projet
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+npm run dev
+# → http://localhost:5173
+```
 
-### `npm run eject`
+### 5. Créer le premier utilisateur admin
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Dans **Supabase > Authentication > Users** :
+1. Cliquer "Add user" → renseigner email + mot de passe
+2. Récupérer l'`user_id` généré
+3. Dans SQL Editor :
+```sql
+insert into profils (user_id, nom, prenom, filiale_id, role)
+values (
+  '<user_id>',
+  'Nom',
+  'Prénom',
+  (select id from filiales where code = 'AFI'),
+  'admin_groupe'
+);
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+---
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Architecture du projet
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```
+src/
+├── components/
+│   ├── layout/       TopBar, Layout, ProtectedRoute
+│   ├── ui/           Button, Badge, Modal (composants réutilisables)
+│   ├── catalog/      ArticleCard, SizeSelector, StockBadge     [Sprint 2]
+│   ├── cart/         CartPanel, CartItem, PointsSummary         [Sprint 2]
+│   ├── admin/        MetricCard, StockTable, FilialeCard        [Sprint 3]
+│   └── documents/    DocumentViewer, GenerateButton             [Sprint 4]
+├── pages/
+│   ├── auth/         Login, ResetPassword
+│   ├── salarie/      Catalogue, Commande, Historique            [Sprint 2]
+│   └── admin/        Dashboard, Stocks, Catalogue, Salaries...  [Sprint 3+]
+├── hooks/            useAuth, useCart, useStock, useCommandes...
+├── services/         supabase.ts, pdf.service.ts                [Sprint 4]
+├── stores/           authStore.ts, cartStore.ts
+├── types/            index.ts (tous les types TypeScript)
+└── utils/            formatters.ts
+```
 
-## Learn More
+## Sprints de développement
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+| Sprint | Contenu                                          | Durée  |
+|--------|--------------------------------------------------|--------|
+| ✅ 1   | Fondations : auth, routing, BDD, types           | 1 sem. |
+| 2      | Espace salarié : catalogue, panier, commande     | 1 sem. |
+| 3      | Back-office : stocks, salariés, dotations        | 1 sem. |
+| 4      | Documents PDF : génération, archivage, emails    | 1 sem. |
+| 5      | Catalogue admin : articles, photos, fournisseurs | 1 sem. |
+| 6      | Finitions : responsive, Excel, déploiement OVH  | 1 sem. |
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Déploiement OVH
 
-### Code Splitting
+```bash
+npm run build
+# Copier le contenu de dist/ sur votre hébergement OVH via FTP ou SSH
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+# Ajouter un fichier .htaccess pour le routing SPA :
+echo 'RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]' > dist/.htaccess
+```
 
-### Analyzing the Bundle Size
+## Rôles et permissions
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+| Rôle            | Accès                                                        |
+|-----------------|--------------------------------------------------------------|
+| `admin_groupe`  | Tout : toutes filiales, factures €, paramétrage              |
+| `admin_filiale` | Sa filiale : stocks, commandes, documents (hors factures €)  |
+| `salarie`       | Son espace : catalogue (pts), commande, historique           |
 
-### Making a Progressive Web App
+> Les prix en euros ne sont jamais exposés aux salariés ni aux admins filiale.
+> Seuls les `admin_groupe` ont accès aux montants réels (via RLS PostgreSQL).
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Variables d'environnement
 
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+| Variable               | Description                          |
+|------------------------|--------------------------------------|
+| `VITE_SUPABASE_URL`    | URL de votre projet Supabase         |
+| `VITE_SUPABASE_ANON_KEY` | Clé publique Supabase (anon key)  |
+| `VITE_APP_NAME`        | Nom affiché dans le header           |
+| `VITE_GROUP_NAME`      | Nom du groupe (sous le logo)         |
+| `VITE_APP_URL`         | URL de prod (pour liens email)       |

@@ -1,0 +1,6 @@
+export { Dashboard } from './Dashboard'
+export { Stocks } from './Stocks'
+export { Salaries } from './Salaries'
+export { Commandes } from './Commandes'
+export { Documents } from './Documents'
+export { CatalogueAdmin } from './CatalogueAdmin'
